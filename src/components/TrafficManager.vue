@@ -184,6 +184,18 @@ export default {
 </script>
 
 <style scoped>
+.role-container {
+  padding: 15px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.el-row {
+  margin-bottom: 15px;
+}
+.el-row:last-child {
+  margin-bottom: 0;
+}
 ::v-deep .el-table--mini th, ::v-deep .el-table--mini td {
   padding: 3px 0;
 }
