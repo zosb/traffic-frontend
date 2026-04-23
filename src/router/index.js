@@ -23,7 +23,7 @@ const routes = [
 ]
 
 const router = new VueRouter({
-    mode: 'history', // 去掉 URL 中的 #
+    mode: 'history',
     base: process.env.BASE_URL,
     routes
 })

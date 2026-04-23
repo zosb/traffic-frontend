@@ -11,7 +11,6 @@ export default {
 </script>
 
 <style>
-/* 全局样式保留在这里 */
 html, body {
   margin: 0;
   padding: 0;

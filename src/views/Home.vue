@@ -47,8 +47,7 @@
 </template>
 
 <script>
-// 注意：请根据你实际的文件夹结构调整引用路径
-// 如果组件在 src/components 下，就是 ../components/
+
 import TrafficManager from '../components/TrafficManager.vue'
 import TrafficPlanner from '../components/TrafficPlanner.vue'
 import DataAnalyst from '../components/DataAnalyst.vue'
@@ -63,12 +62,12 @@ export default {
   },
   data() {
     return {
-      currentRole: '', // 当前登录的角色
+      currentRole: '',
       currentTime: '',
       timer: null,
       weatherTimer: null,
       weatherIcon: 'el-icon-loading',
-      weatherStatus: '加载中..',
+      weatherStatus: '加载中',
       currentTemp: '--',
       weatherColor: '#fff'
     }
@@ -84,10 +83,9 @@ export default {
     }
   },
   created() {
-    // 页面创建时获取角色
     const role = localStorage.getItem('userRole');
     if (!role) {
-      this.$router.push('/login'); // 没登录直接踢回去
+      this.$router.push('/login');
     } else {
       this.currentRole = role;
     }
@@ -115,7 +113,6 @@ export default {
     },
     updateTime() {
       const now = new Date();
-      // ... (时间逻辑保持不变)
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
@@ -125,7 +122,6 @@ export default {
       this.currentTime = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
     },
     fetchRealWeather() {
-      // ... (天气逻辑保持不变，直接复制之前的)
       const url = 'https://api.open-meteo.com/v1/forecast?latitude=39.9042&longitude=116.4074&current_weather=true&timezone=Asia%2FShanghai';
       axios.get(url).then(res => {
         if (res.data && res.data.current_weather) {
@@ -158,7 +154,7 @@ export default {
 </script>
 
 <style scoped>
-/* 这里复用原本 App.vue 的样式，稍微调整布局 */
+
 .home-wrapper {
   display: flex;
   flex-direction: column;
@@ -218,10 +214,8 @@ export default {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  /* 不再有 padding: 20px，因为各个组件内部已经有 container padding 了，避免双重 padding */
 }
 
-/* 简单的过渡动画 */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter, .fade-leave-to { opacity: 0; }
 </style>

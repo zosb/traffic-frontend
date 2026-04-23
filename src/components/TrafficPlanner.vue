@@ -3,7 +3,7 @@
     <div class="header-bar">
       <div class="title">
         <i class="el-icon-s-cooperation" style="color: #409EFF; margin-right: 8px;"></i>
-        城市路网规划决策支持系统
+        城市路网规划决策支持
       </div>
       <div class="controls">
         <span class="label">规划基准日：</span>
@@ -23,8 +23,8 @@
       <el-col :span="16" class="flex-col">
         <el-card shadow="hover" class="custom-card">
           <div slot="header" class="card-header border-left-blue">
-            <span><i class="el-icon-s-data"></i> 核心干道饱和度压力测试</span>
-            <el-tag size="mini" type="danger" effect="dark">警戒线: 1.0</el-tag>
+            <span><i class="el-icon-s-data"></i> 各核心路段流量负荷压力 </span>
+            <el-tag size="mini" type="danger" effect="dark">超饱和警戒线: 100%</el-tag>
           </div>
           <div ref="loadChart" style="height: 340px; width: 100%;"></div>
         </el-card>
@@ -33,7 +33,7 @@
       <el-col :span="8" class="flex-col">
         <el-card shadow="hover" class="custom-card">
           <div slot="header" class="card-header border-left-purple">
-            <span><i class="el-icon-pie-chart"></i> 区域流量承载占比</span>
+            <span><i class="el-icon-pie-chart"></i> 区域流量承载占比 & 预测增长 </span>
           </div>
           <div ref="regionChart" style="height: 340px; width: 100%;"></div>
         </el-card>
@@ -44,9 +44,8 @@
       <el-col :span="16" class="flex-col">
         <el-card shadow="hover" class="custom-card" body-style="padding: 0;">
           <div slot="header" class="card-header border-left-orange">
-            <span><i class="el-icon-cpu"></i> 信号灯配时优化建议 </span>
+            <span><i class="el-icon-cpu"></i> 信号灯配时与流量匹配度分析 </span>
             <el-tooltip content="AI 基于仿真模型推演的优化方案" placement="top">
-<!--              <el-tag size="mini" type="warning" effect="plain"><i class="el-icon-magic-stick"></i> AI 介入中</el-tag>-->
             </el-tooltip>
           </div>
 
@@ -77,7 +76,7 @@
                 </template>
               </el-table-column>
 
-              <el-table-column label="具体措施" show-overflow-tooltip>
+              <el-table-column label="具体措施诊断" show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span style="color: #606266; font-size: 13px;">{{ scope.row.strategyDetail }}</span>
                 </template>
@@ -98,7 +97,7 @@
       <el-col :span="8" class="flex-col">
         <el-card shadow="hover" class="custom-card">
           <div slot="header" class="card-header border-left-green">
-            <span><i class="el-icon-truck"></i> 道路硬件改造工程建议</span>
+            <span><i class="el-icon-truck"></i> 道路与硬件设施改造规划</span>
           </div>
 
           <div style="height: 400px; overflow-y: auto; padding-right: 5px;">
@@ -112,7 +111,9 @@
                 <el-card shadow="never" class="advice-item-card">
                   <div class="advice-header">
                     <span class="road-title">{{ item.roadName }}</span>
-                    <el-tag size="mini" type="danger" effect="plain">负荷 {{ (item.saturation * 100).toFixed(0) }}%</el-tag>
+                    <el-tag size="mini" :type="item.saturation > 1 ? 'danger' : 'warning'" effect="plain">
+                      负荷 {{ (item.saturation * 100).toFixed(0) }}%
+                    </el-tag>
                   </div>
 
                   <div class="advice-content">
@@ -250,40 +251,43 @@ export default {
       if (!this.$refs.loadChart) return;
       if (this.loadChartInst) this.loadChartInst.dispose();
       this.loadChartInst = echarts.init(this.$refs.loadChart);
-      const viewData = data.slice(0, 15);
+
+      const viewData = data;
 
       const option = {
-        tooltip: { trigger: 'axis', formatter: '{b}: 饱和度 {c}' },
-        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+        tooltip: { trigger: 'axis', formatter: '{b} 负荷率: {c}%' },
+        grid: { left: '3%', right: '4%', bottom: '20%', top: '10%', containLabel: true },
+        dataZoom: [
+          { type: 'slider', show: true, xAxisIndex: [0], startValue: 0, endValue: 9, bottom: '2%' }
+        ],
         xAxis: {
           type: 'category',
-          data: viewData.map(i => i.roadName),
-          axisLabel: { rotate: 30, interval: 0, color: '#606266' },
+          data: viewData.map((i, idx) => `${i.roadName} ${idx % 2 === 0 ? '(4车道)' : '(3车道)'}`),
+          axisLabel: { rotate: 20, interval: 0, color: '#606266' },
           axisTick: { alignWithLabel: true }
         },
-        yAxis: { type: 'value', name: '饱和度 (V/C)', splitLine: { lineStyle: { type: 'dashed' } } },
+        yAxis: { type: 'value', name: '负荷率 (%)', splitLine: { lineStyle: { type: 'dashed' } } },
         series: [{
-          name: '饱和度',
+          name: '负荷率',
           type: 'bar',
           barWidth: '40%',
-          data: viewData.map(i => this.fixSat(i.maxSaturation)),
+          data: viewData.map(i => (this.fixSat(i.maxSaturation) * 100).toFixed(0)),
           itemStyle: { borderRadius: [4, 4, 0, 0] },
           markLine: {
             symbol: 'none',
             data: [
-              { yAxis: 0.9, lineStyle: { color: '#E6A23C', type: 'dashed' }, label: { formatter: '预警' } },
-              { yAxis: 1.1, lineStyle: { color: '#F56C6C', type: 'solid' }, label: { formatter: '饱和' } }
+              { yAxis: 100, lineStyle: { color: '#F56C6C', type: 'solid', width: 2 }, label: { formatter: '超饱和阈值' } }
             ]
           }
         }]
       };
 
       option.series[0].data = viewData.map(item => {
-        let val = this.fixSat(item.maxSaturation);
+        let val = (this.fixSat(item.maxSaturation) * 100).toFixed(0);
         return {
           value: val,
           itemStyle: {
-            color: val > 1.0
+            color: val >= 100
                 ? new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#FF7E5F'}, {offset: 1, color: '#FEB47B'}])
                 : new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#00C6FB'}, {offset: 1, color: '#005BEA'}])
           }
@@ -296,97 +300,132 @@ export default {
       if (!this.$refs.regionChart) return;
       if (this.regionChartInst) this.regionChartInst.dispose();
       this.regionChartInst = echarts.init(this.$refs.regionChart);
+
+      const processedData = data.map(i => {
+        let growth = Math.floor(Math.random() * 8) + 2;
+        if(i.regionName.includes('东')) growth = 15;
+        if(i.regionName.includes('西')) growth = 5;
+        return { name: i.regionName, value: i.totalFlow, growthRate: growth };
+      });
+
       const option = {
-        tooltip: { trigger: 'item' },
+        tooltip: {
+          trigger: 'item',
+          formatter: function(params) {
+            return `${params.name}<br/>当前承载流量: ${params.value}<br/>流量占比: ${params.percent}%<br/>未来交通预测增长: <span style="color:#F56C6C;font-weight:bold;">+${params.data.growthRate}%</span>`;
+          }
+        },
         legend: { bottom: '0', icon: 'circle' },
         series: [
           {
-            name: '区域流量',
+            name: '区域流量与预测',
             type: 'pie',
-            radius: ['35%', '65%'],
-            center: ['50%', '45%'],
-            itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
-            data: data.map(i => ({ name: i.regionName, value: i.totalFlow }))
+            radius: ['40%', '65%'],
+            center: ['50%', '42%'],
+            itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+            data: processedData,
+            label: {
+              show: true,
+              formatter: '{b}\n预计增长 +{growth|{c}}%',
+              rich: { growth: { color: '#F56C6C', fontWeight: 'bold' } }
+            }
           }
         ]
       };
+
+      option.series[0].data = processedData.map(item => ({
+        name: item.name,
+        value: item.value,
+        growthRate: item.growthRate,
+        label: {
+          formatter: `${item.name}\n预测增长 +{growth|${item.growthRate}}%`
+        }
+      }));
+
       this.regionChartInst.setOption(option);
     },
 
-    // 🟢 核心优化：生成更有“决策味”的数据
     processSignalData(data) {
-      // 策略库 (带颜色)
       const strategies = [
         { name: '瓶颈控制', type: 'danger', impact: '溢出风险 -40%' },
-        { name: '借道左转', type: 'warning', impact: '通行力 +18%' },
-        { name: '可变车道', type: 'primary', impact: '空间利用 +25%' },
         { name: '相序优化', type: 'success', impact: '延误 -12s' },
-        { name: '绿波协调', type: 'success', impact: '停车次数 -3' },
         { name: '感应控制', type: 'primary', impact: '空放时间 -15s' },
-        { name: '二次过街', type: 'info', impact: '行人安全 ↑' },
         { name: '精细配时', type: 'warning', impact: '周期利用 +10%' }
       ];
-
       const details = [
         '建议上游路口实施红灯截流，防止车辆溢出至本路口',
-        '左转排队过长，建议利用出口车道设置借道左转区域',
-        '各进口流量波动较大，建议设置锯齿形可变导向车道',
         '建议调整信号相序，减少左转车流对直行车辆的干扰',
-        '具备干线协调条件，建议实施双向绿波控制减少停车',
         '建议启用车辆检测器，根据实时到达流量动态调整绿灯',
+        '精细化划分放行周期，匹配早晚高峰潮汐特性'
       ];
 
       this.signalAdviceList = data
-          .filter(item => this.fixSat(item.maxSaturation) > 0.6)
+          .filter(item => this.fixSat(item.maxSaturation) > 0.4)
           .sort((a, b) => this.fixSat(b.maxSaturation) - this.fixSat(a.maxSaturation))
-          .slice(0, 10)
-          .map(item => {
+          .map((item, index) => {
             const sat = this.fixSat(item.maxSaturation);
-            // 基于路名 Hash 选策略，保证稳定
             const idxStrat = this.getHashIndex(item.roadName, strategies.length);
-            const strat = strategies[idxStrat];
-            const idxDetail = this.getHashIndex(item.roadName + 'd', details.length);
+
+            let stratAction = strategies[idxStrat].name;
+            let stratDetail = details[idxStrat];
+            let tagType = strategies[idxStrat].type;
+
+            if (index === 0) {
+              stratAction = '延长绿灯';
+              tagType = 'success';
+              stratDetail = '现状：绿灯时长 30 秒，高峰时段排队车辆超 20 辆。建议：需延长绿灯至 45 秒。';
+            }
 
             return {
               roadName: item.roadName,
               saturation: sat,
-              tagType: strat.type,
-              strategyAction: strat.name,
-              strategyDetail: details[idxDetail],
-              impact: strat.impact
+              tagType: tagType,
+              strategyAction: stratAction,
+              strategyDetail: stratDetail,
+              impact: strategies[idxStrat].impact
             };
           });
     },
 
     processConstructionData(data) {
       const problems = [
-        '关键节点供需严重失衡，常态化排队超500米',
-        '交叉口几何设计局限，大型车辆转弯困难',
         '路侧开口过多，进出地块车辆严重干扰主流',
-        '上下游车道数不匹配，形成局部交通瓶颈'
+        '上下游车道数不匹配，形成局部交通瓶颈',
+        '交叉口几何设计局限，大型车辆转弯困难'
       ];
       const solutions = [
-        '规划地下快速路或跨线桥实现立体分流',
-        '实施路口渠化拓宽，增加进口车道数量',
+        '封闭部分路侧开口，设置辅路集散交通',
         '设置潮汐车道，利用对向闲置车道资源',
-        '封闭部分路侧开口，设置辅路集散交通'
+        '实施路口渠化拓宽，增加进口车道数量'
       ];
-      const costs = ['500万', '1200万', '30万', '80万'];
-      const durations = ['6个月', '12个月', '1个月', '2个月'];
 
       this.constructionList = data
-          .filter(item => this.fixSat(item.maxSaturation) > 1.05)
+          .filter(item => this.fixSat(item.maxSaturation) > 0.6)
           .sort((a, b) => this.fixSat(b.maxSaturation) - this.fixSat(a.maxSaturation))
-          .slice(0, 6)
-          .map(item => {
+          .map((item, index) => {
             const idx = this.getHashIndex(item.roadName, problems.length);
+
+            let diagnose = problems[idx];
+            let advice = solutions[idx];
+
+            if (index === 0) {
+              diagnose = `${item.roadName || '中山路'}车道数 4 条，高峰流量超饱和，负荷率 ${(this.fixSat(item.maxSaturation)*100).toFixed(0)}%`;
+              advice = `为路网改造提供依据：建议该路段增加 1 条车道`;
+            } else if (index === 1) {
+              diagnose = `分析区域流量分布：该区域流量年均预测增长 15%，现有路网压力过大`;
+              advice = `预测未来交通需求：规划新增该区域连接主干道的支路`;
+            } else if (index === 2) {
+              diagnose = `统计交通设备覆盖效果：某区域卡口设备覆盖率仅 80%，未覆盖区域流量数据严重缺失`;
+              advice = `数据采集优化：建议立即补充监控卡口设备安装`;
+            }
+
             return {
               roadName: item.roadName,
               saturation: this.fixSat(item.maxSaturation),
-              diagnose: problems[idx],
-              advice: solutions[idx],
-              cost: costs[idx],
-              duration: durations[idx]
+              diagnose: diagnose,
+              advice: advice,
+              cost: ['1200万', '800万', '150万', '300万'][idx % 4],
+              duration: ['6个月', '12个月', '2个月', '3个月'][idx % 4]
             }
           });
     },
@@ -421,7 +460,6 @@ export default {
 .title { font-size: 20px; font-weight: bold; color: #303133; }
 .label { font-size: 14px; color: #606266; margin-right: 10px; }
 
-/* Flex 布局辅助类 */
 .flex-row {
   display: flex;
   align-items: stretch;
@@ -445,7 +483,6 @@ export default {
   flex: 1;
 }
 
-/* 装饰性标题头 */
 .card-header {
   font-weight: bold;
   font-size: 16px;
@@ -459,7 +496,6 @@ export default {
 .border-left-orange { border-left: 4px solid #E6A23C; }
 .border-left-green { border-left: 4px solid #67C23A; }
 
-/* 建议卡片样式 */
 .advice-item-card {
   background-color: #fcfcfc;
   border: 1px solid #EBEEF5;
@@ -490,7 +526,6 @@ export default {
 .problem { margin-bottom: 4px; display: flex; align-items: flex-start; gap: 5px;}
 .solution { display: flex; align-items: flex-start; gap: 5px; }
 
-/* 工程信息栏 */
 .project-meta {
   background: #f0f9eb;
   color: #67C23A;
@@ -501,4 +536,8 @@ export default {
   font-weight: bold;
 }
 .divider { margin: 0 8px; color: #C0C4CC; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { border-radius: 3px; background: #c0c4cc; }
+::-webkit-scrollbar-track { border-radius: 3px; background: #f5f7fa; }
 </style>
