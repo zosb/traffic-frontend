@@ -3,7 +3,7 @@
     <div class="header-bar">
       <div class="title">
         <i class="el-icon-s-cooperation" style="color: #409EFF; margin-right: 8px;"></i>
-        城市路网规划决策支持系统
+        城市路网规划决策支持
       </div>
       <div class="controls">
         <span class="label">规划基准日：</span>

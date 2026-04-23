@@ -156,7 +156,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      currDate: '', // 默认日期
+      currDate: '',
       selectedRoad: '长安街',
       mainRoads: ['长安街', '建国门外大街', '中关村大街', '学院路', '朝阳北路', '西直门北大街'],
 
@@ -187,7 +187,6 @@ export default {
     },
 
     scrollToFaults() {
-      // 简单的滚动定位效果
       this.$el.querySelector('.el-table').scrollIntoView({ behavior: 'smooth' });
     },
 
@@ -195,9 +194,7 @@ export default {
       this.loadTrend();
     },
 
-    // 1. 加载数据质量报告 (C.2 核心)
     loadQualityReport() {
-      // 复用之前的 quality_report 接口
       axios.get('http://localhost:8080/api/analysis/quality_report').then(res => {
         const data = res.data;
         if (data.date) {
@@ -223,19 +220,16 @@ export default {
         // 这里为了演示效果，给一个随机波动值
         this.recordMetric = { value: (145 + Math.random() * 5).toFixed(2), trend: '+2.5%' };
 
-        // 渲染质量趋势图 (Spark 优化效果)
         this.initQualityTrendChart(data.trend);
       });
     },
 
-    // 2. 渲染质量趋势图
     initQualityTrendChart(trendData) {
       if (!this.$refs.qualityTrendChart) return;
       if (this.qualityChartInstance) this.qualityChartInstance.dispose();
 
       this.qualityChartInstance = echarts.init(this.$refs.qualityTrendChart);
 
-      // Mock 数据兜底，防止后端没传 trend 字段
       const dates = trendData ? trendData.dates : ['11-01', '11-02', '11-03', '11-04', '11-05', '11-06', '11-07'];
       const odsData = trendData ? trendData.ods : [2.1, 1.8, 1.5, 0.9, 0.8, 0.6, 0.5];
       const gpsData = trendData ? trendData.gps : [92, 93, 94.5, 96.2, 97.1, 97.5, 98.2];
@@ -265,7 +259,6 @@ export default {
       this.qualityChartInstance.setOption(option);
     },
 
-    // 3. 加载流量趋势 (C.1 核心)
     loadTrend() {
       if (!this.currDate) return;
       axios.get(`http://localhost:8080/api/analysis/trend_compare?date=${this.currDate}&roadName=${this.selectedRoad}`)
@@ -314,7 +307,6 @@ export default {
 .role-container { padding: 15px; background-color: #f5f7fa; min-height: 100vh; }
 .mb-20 { margin-bottom: 20px; }
 
-/* 头部样式 */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -326,7 +318,6 @@ export default {
 }
 .dashboard-header .title { font-size: 18px; font-weight: bold; color: #303133; }
 
-/* KPI 卡片 */
 .kpi-card {
   border-radius: 8px;
   padding: 20px;
@@ -353,7 +344,6 @@ export default {
 .text-danger { color: #ffebee; font-weight: bold; }
 .text-warning { color: #fff3e0; font-weight: bold; }
 
-/* 自定义卡片 */
 .custom-card { border-radius: 8px; border: none; }
 .card-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; }
 .text-gray { color: #909399; margin-left: 5px; cursor: pointer; }
@@ -361,7 +351,6 @@ export default {
 .font-bold { font-weight: bold; }
 .border-bottom-red { border-bottom: 2px solid #F56C6C; padding-bottom: 10px; margin-bottom: -10px; }
 
-/* AI 报告区域 */
 .ai-card { display: flex; flex-direction: column; }
 .ai-report-container {
   height: auto;
