@@ -23,8 +23,8 @@
       <el-col :span="16" class="flex-col">
         <el-card shadow="hover" class="custom-card">
           <div slot="header" class="card-header border-left-blue">
-            <span><i class="el-icon-s-data"></i> 各核心路段流量负荷压力 </span>
-            <el-tag size="mini" type="danger" effect="dark">超饱和警戒线: 100%</el-tag>
+            <span><i class="el-icon-s-data"></i> 部分路段流量负荷压力测试 </span>
+            <el-tag size="mini" type="danger" effect="dark"> 超饱和警戒线: 100% </el-tag>
           </div>
           <div ref="loadChart" style="height: 340px; width: 100%;"></div>
         </el-card>
@@ -33,7 +33,7 @@
       <el-col :span="8" class="flex-col">
         <el-card shadow="hover" class="custom-card">
           <div slot="header" class="card-header border-left-purple">
-            <span><i class="el-icon-pie-chart"></i> 区域流量承载占比 & 预测增长 </span>
+            <span><i class="el-icon-pie-chart"></i> 区域流量承载占比 & 未来增长预测 </span>
           </div>
           <div ref="regionChart" style="height: 340px; width: 100%;"></div>
         </el-card>
@@ -42,51 +42,44 @@
 
     <el-row :gutter="20" class="flex-row mt-20">
       <el-col :span="16" class="flex-col">
-        <el-card shadow="hover" class="custom-card" body-style="padding: 0;">
+        <el-card shadow="hover" class="custom-card" body-style="padding: 0;" v-loading="isAiLoading" element-loading-text="AI 大模型正在深度推理信控策略..." element-loading-spinner="el-icon-loading">
           <div slot="header" class="card-header border-left-orange">
             <span><i class="el-icon-cpu"></i> 信号灯配时与流量匹配度分析 </span>
-            <el-tooltip content="AI 基于仿真模型推演的优化方案" placement="top">
-            </el-tooltip>
+            <el-tag size="mini" :type="isAiLoading ? 'warning' : 'success'" effect="plain">
+              <i :class="isAiLoading ? 'el-icon-loading' : 'el-icon-check'"></i> {{ isAiLoading ? 'AI 测算中...' : 'AI 测算完成' }}
+            </el-tag>
           </div>
 
           <div style="height: 400px; overflow-y: auto;">
             <el-table :data="signalAdviceList" stripe style="width: 100%" size="medium">
               <el-table-column prop="roadName" label="路段/路口" width="140" show-overflow-tooltip>
-                <template slot-scope="scope">
-                  <span style="font-weight: bold; color: #303133;">{{ scope.row.roadName }}</span>
-                </template>
+                <template slot-scope="scope"><span style="font-weight: bold; color: #303133;">{{ scope.row.roadName }}</span></template>
               </el-table-column>
 
               <el-table-column label="饱和度 (V/C)" width="120" align="center">
                 <template slot-scope="scope">
-                  <el-progress
-                      :percentage="Math.min(scope.row.saturation * 50, 100)"
-                      :format="() => scope.row.saturation"
-                      :color="getSaturationColor(scope.row.saturation)"
-                      :stroke-width="8">
-                  </el-progress>
+                  <el-progress :percentage="Math.min(scope.row.saturation * 50, 100)" :format="() => scope.row.saturation" :color="getSaturationColor(scope.row.saturation)" :stroke-width="8"></el-progress>
                 </template>
               </el-table-column>
 
-              <el-table-column label="优化策略" width="110" align="center">
+              <el-table-column label="优化策略" width="120" align="center">
                 <template slot-scope="scope">
-                  <el-tag size="small" :type="scope.row.tagType" effect="dark" style="border-radius: 2px;">
+                  <el-tag size="mini" :type="scope.row.tagType" effect="light" style="font-weight: bold; border-width: 1px;">
                     {{ scope.row.strategyAction }}
                   </el-tag>
                 </template>
               </el-table-column>
 
-              <el-table-column label="具体措施诊断" show-overflow-tooltip>
-                <template slot-scope="scope">
-                  <span style="color: #606266; font-size: 13px;">{{ scope.row.strategyDetail }}</span>
-                </template>
+              <el-table-column label="深度分析与措施诊断" show-overflow-tooltip>
+                <template slot-scope="scope"><span style="color: #606266; font-size: 13px;">{{ scope.row.strategyDetail }}</span></template>
               </el-table-column>
 
-              <el-table-column label="预期增益" width="110" align="right">
+              <el-table-column label="预期增益" width="130" align="center">
                 <template slot-scope="scope">
-                  <span style="color: #67C23A; font-weight: bold; font-size: 11px;">
-                    <i class="el-icon-top"></i> {{ scope.row.impact }}
-                  </span>
+                  <div class="impact-badge" :class="{'impact-up': scope.row.impact.includes('+'), 'impact-down': scope.row.impact.includes('-')}">
+                    <i :class="scope.row.impact.includes('+') ? 'el-icon-top' : (scope.row.impact.includes('-') ? 'el-icon-bottom' : 'el-icon-check')"></i>
+                    {{ scope.row.impact }}
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -95,40 +88,27 @@
       </el-col>
 
       <el-col :span="8" class="flex-col">
-        <el-card shadow="hover" class="custom-card">
+        <el-card shadow="hover" class="custom-card" v-loading="isAiLoading" element-loading-text="生成基建规划中..." element-loading-spinner="el-icon-loading">
           <div slot="header" class="card-header border-left-green">
-            <span><i class="el-icon-truck"></i> 道路与硬件设施改造规划</span>
+            <span><i class="el-icon-truck"></i> 道路与硬件设施改造规划 </span>
           </div>
 
           <div style="height: 400px; overflow-y: auto; padding-right: 5px;">
-            <el-timeline style="padding-left: 5px; padding-top: 15px;">
-              <el-timeline-item
-                  v-for="(item, index) in constructionList"
-                  :key="index"
-                  placement="top"
-                  :color="getSaturationColor(item.saturation)"
-                  hide-timestamp>
+            <el-timeline style="padding-left: 5px; padding-top: 15px;" v-if="constructionList.length > 0">
+              <el-timeline-item v-for="(item, index) in constructionList" :key="index" placement="top" :color="getSaturationColor(item.saturation)" hide-timestamp>
                 <el-card shadow="never" class="advice-item-card">
                   <div class="advice-header">
                     <span class="road-title">{{ item.roadName }}</span>
-                    <el-tag size="mini" :type="item.saturation > 1 ? 'danger' : 'warning'" effect="plain">
-                      负荷 {{ (item.saturation * 100).toFixed(0) }}%
-                    </el-tag>
+                    <el-tag size="mini" :type="item.saturation > 1 ? 'danger' : 'warning'" effect="plain">负荷 {{ (item.saturation * 100).toFixed(0) }}%</el-tag>
                   </div>
 
                   <div class="advice-content">
-                    <div class="problem">
-                      <i class="el-icon-warning-outline" style="color:#F56C6C"></i>
-                      <span style="color:#606266">{{ item.diagnose }}</span>
-                    </div>
-                    <div class="solution">
-                      <i class="el-icon-s-cooperation" style="color:#409EFF"></i>
-                      <span style="color:#303133; font-weight: 500;">{{ item.advice }}</span>
-                    </div>
+                    <div class="problem"><i class="el-icon-warning-outline" style="color:#F56C6C"></i><span style="color:#606266">{{ item.diagnose }}</span></div>
+                    <div class="solution"><i class="el-icon-s-cooperation" style="color:#409EFF"></i><span style="color:#303133; font-weight: 500;">{{ item.advice }}</span></div>
                   </div>
 
                   <div class="project-meta">
-                    <span><i class="el-icon-money"></i> 预算: {{ item.cost }}</span>
+                    <span><i class="el-icon-money"></i> 预估预算: {{ item.cost }}</span>
                     <span class="divider">|</span>
                     <span><i class="el-icon-date"></i> 工期: {{ item.duration }}</span>
                   </div>
@@ -136,9 +116,8 @@
               </el-timeline-item>
             </el-timeline>
 
-            <div v-if="constructionList.length === 0" style="text-align: center; color: #909399; margin-top: 80px;">
-              <i class="el-icon-circle-check" style="font-size: 40px; color: #67C23A; margin-bottom: 10px;"></i><br>
-              当前路网运行良好<br>无需硬件改造
+            <div v-if="!isAiLoading && constructionList.length === 0" style="text-align: center; color: #909399; margin-top: 80px;">
+              <i class="el-icon-circle-check" style="font-size: 40px; color: #67C23A; margin-bottom: 10px;"></i><br>当前路网运行良好<br>无需硬件改造
             </div>
           </div>
         </el-card>
@@ -159,7 +138,8 @@ export default {
       regionChartInst: null,
       fullData: [],
       signalAdviceList: [],
-      constructionList: []
+      constructionList: [],
+      isAiLoading: false
     }
   },
   mounted() {
@@ -184,82 +164,103 @@ export default {
       return num.toFixed(2);
     },
 
-    getHashIndex(str, max) {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash) % max;
-    },
-
     initPage() {
       axios.get('http://localhost:8080/api/analysis/quality_report')
           .then(res => {
-            if (res.data && res.data.date) {
-              this.currDate = res.data.date;
-            } else {
-              this.currDate = this.getYesterday();
-            }
+            this.currDate = (res.data && res.data.date) ? res.data.date : this.getYesterday();
             this.refreshData();
-          })
-          .catch(() => {
-            this.currDate = this.getYesterday();
-            this.refreshData();
-          });
+          }).catch(() => {
+        this.currDate = this.getYesterday();
+        this.refreshData();
+      });
     },
 
     getYesterday() {
       const date = new Date();
       date.setDate(date.getDate() - 1);
-      const y = date.getFullYear();
-      const m = (date.getMonth() + 1).toString().padStart(2, '0');
-      const d = date.getDate().toString().padStart(2, '0');
-      return `${y}-${m}-${d}`;
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     },
 
     refreshData() {
       if (!this.currDate) return;
 
-      axios.get(`http://localhost:8080/api/planning/advice?date=${this.currDate}`)
-          .then(res => {
-            this.fullData = res.data || [];
-            this.processSignalData(this.fullData);
-            this.processConstructionData(this.fullData);
-            this.$nextTick(() => {
-              this.initLoadChart(this.fullData);
-            });
-          })
-          .catch(() => {
-            this.$message.warning(`日期 ${this.currDate} 暂无规划数据`);
-            this.fullData = [];
-            this.initLoadChart([]);
-          });
+      this.fullData = [];
+      this.signalAdviceList = [];
+      this.constructionList = [];
+      this.isAiLoading = true;
 
-      axios.get(`http://localhost:8080/api/planning/region?date=${this.currDate}`)
-          .then(res => {
-            this.$nextTick(() => {
-              this.initRegionChart(res.data || []);
+      Promise.all([
+        axios.get(`http://localhost:8080/api/planning/advice?date=${this.currDate}`),
+        axios.get(`http://localhost:8080/api/planning/region?date=${this.currDate}`)
+      ]).then(([resAdvice, resRegion]) => {
+        const adviceData = resAdvice.data || [];
+        const regionData = resRegion.data || [];
+
+        this.$nextTick(() => {
+          this.initLoadChart(adviceData);
+          this.initRegionChart(regionData, []);
+        });
+
+        const payload = {
+          regions: regionData.map(i => ({ name: i.regionName, flow: i.totalFlow })),
+          roads: adviceData.map(i => ({ name: i.roadName, saturation: this.fixSat(i.maxSaturation) }))
+        };
+
+        return axios.post('http://localhost:8080/api/planning/ai_batch_analyze', payload)
+            .then(aiRes => {
+              const aiData = aiRes.data;
+              if (!aiData.error) {
+                this.initRegionChart(regionData, aiData.regions);
+                this.processSignalDataFromAi(aiData.roads);
+                this.processConstructionDataFromAi(aiData.roads);
+              } else {
+                this.$message.error('AI大模型研判失败，触发降级展示');
+              }
             });
-          })
-          .catch(() => {
-            this.initRegionChart([]);
-          });
+      }).catch(() => {
+        this.$message.warning(`获取数据或 AI 分析发生异常`);
+      }).finally(() => {
+        this.isAiLoading = false;
+      });
+    },
+
+    processSignalDataFromAi(aiRoads) {
+      this.signalAdviceList = aiRoads
+          .filter(r => r.saturation > 0.4)
+          .sort((a, b) => b.saturation - a.saturation)
+          .map(r => ({
+            roadName: r.roadName,
+            saturation: r.saturation,
+            tagType: r.signal.tag,
+            strategyAction: r.signal.action,
+            strategyDetail: r.signal.detail,
+            impact: r.signal.impact
+          }));
+    },
+
+    processConstructionDataFromAi(aiRoads) {
+      this.constructionList = aiRoads
+          .filter(r => r.hardware !== null)
+          .sort((a, b) => b.saturation - a.saturation)
+          .map(r => ({
+            roadName: r.roadName,
+            saturation: r.saturation,
+            diagnose: r.hardware.diagnose,
+            advice: r.hardware.advice,
+            cost: r.hardware.cost,
+            duration: r.hardware.duration
+          }));
     },
 
     initLoadChart(data) {
       if (!this.$refs.loadChart) return;
       if (this.loadChartInst) this.loadChartInst.dispose();
       this.loadChartInst = echarts.init(this.$refs.loadChart);
-
       const viewData = data;
-
       const option = {
         tooltip: { trigger: 'axis', formatter: '{b} 负荷率: {c}%' },
-        grid: { left: '3%', right: '4%', bottom: '20%', top: '10%', containLabel: true },
-        dataZoom: [
-          { type: 'slider', show: true, xAxisIndex: [0], startValue: 0, endValue: 9, bottom: '2%' }
-        ],
+        grid: { left: '3%', right: '12%', bottom: '20%', top: '10%', containLabel: true },
+        dataZoom: [{ type: 'slider', show: true, xAxisIndex: [0], startValue: 0, endValue: 9, bottom: '2%' }],
         xAxis: {
           type: 'category',
           data: viewData.map((i, idx) => `${i.roadName} ${idx % 2 === 0 ? '(4车道)' : '(3车道)'}`),
@@ -268,20 +269,12 @@ export default {
         },
         yAxis: { type: 'value', name: '负荷率 (%)', splitLine: { lineStyle: { type: 'dashed' } } },
         series: [{
-          name: '负荷率',
-          type: 'bar',
-          barWidth: '40%',
+          name: '负荷率', type: 'bar', barWidth: '40%',
           data: viewData.map(i => (this.fixSat(i.maxSaturation) * 100).toFixed(0)),
           itemStyle: { borderRadius: [4, 4, 0, 0] },
-          markLine: {
-            symbol: 'none',
-            data: [
-              { yAxis: 100, lineStyle: { color: '#F56C6C', type: 'solid', width: 2 }, label: { formatter: '超饱和阈值' } }
-            ]
-          }
+          markLine: { symbol: 'none', data: [{ yAxis: 100, lineStyle: { color: '#F56C6C', type: 'solid', width: 2 }, label: { formatter: '超饱和阈值' } }] }
         }]
       };
-
       option.series[0].data = viewData.map(item => {
         let val = (this.fixSat(item.maxSaturation) * 100).toFixed(0);
         return {
@@ -296,15 +289,14 @@ export default {
       this.loadChartInst.setOption(option);
     },
 
-    initRegionChart(data) {
+    initRegionChart(data, aiRegions = []) {
       if (!this.$refs.regionChart) return;
       if (this.regionChartInst) this.regionChartInst.dispose();
       this.regionChartInst = echarts.init(this.$refs.regionChart);
 
       const processedData = data.map(i => {
-        let growth = Math.floor(Math.random() * 8) + 2;
-        if(i.regionName.includes('东')) growth = 15;
-        if(i.regionName.includes('西')) growth = 5;
+        const aiMatch = aiRegions.find(r => r.name === i.regionName);
+        let growth = aiMatch ? aiMatch.growthRate : 0.0;
         return { name: i.regionName, value: i.totalFlow, growthRate: growth };
       });
 
@@ -312,122 +304,23 @@ export default {
         tooltip: {
           trigger: 'item',
           formatter: function(params) {
-            return `${params.name}<br/>当前承载流量: ${params.value}<br/>流量占比: ${params.percent}%<br/>未来交通预测增长: <span style="color:#F56C6C;font-weight:bold;">+${params.data.growthRate}%</span>`;
+            return `${params.name}<br/>当前承载流量: ${params.value}<br/>流量占比: ${params.percent}%<br/>未来交通AI预测增长: <span style="color:#F56C6C;font-weight:bold;">+${params.data.growthRate}%</span>`;
           }
         },
         legend: { bottom: '0', icon: 'circle' },
-        series: [
-          {
-            name: '区域流量与预测',
-            type: 'pie',
-            radius: ['40%', '65%'],
-            center: ['50%', '42%'],
-            itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
-            data: processedData,
-            label: {
-              show: true,
-              formatter: '{b}\n预计增长 +{growth|{c}}%',
-              rich: { growth: { color: '#F56C6C', fontWeight: 'bold' } }
-            }
-          }
-        ]
+        series: [{
+          name: '区域流量与预测', type: 'pie', radius: ['40%', '65%'], center: ['50%', '42%'],
+          itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+          data: processedData,
+          label: { show: true, formatter: '{b}\n预计增长 +{growth|{c}}%', rich: { growth: { color: '#F56C6C', fontWeight: 'bold' } } }
+        }]
       };
 
       option.series[0].data = processedData.map(item => ({
-        name: item.name,
-        value: item.value,
-        growthRate: item.growthRate,
-        label: {
-          formatter: `${item.name}\n预测增长 +{growth|${item.growthRate}}%`
-        }
+        name: item.name, value: item.value, growthRate: item.growthRate,
+        label: { formatter: `${item.name}\n预测增长 +{growth|${item.growthRate}}%` }
       }));
-
       this.regionChartInst.setOption(option);
-    },
-
-    processSignalData(data) {
-      const strategies = [
-        { name: '瓶颈控制', type: 'danger', impact: '溢出风险 -40%' },
-        { name: '相序优化', type: 'success', impact: '延误 -12s' },
-        { name: '感应控制', type: 'primary', impact: '空放时间 -15s' },
-        { name: '精细配时', type: 'warning', impact: '周期利用 +10%' }
-      ];
-      const details = [
-        '建议上游路口实施红灯截流，防止车辆溢出至本路口',
-        '建议调整信号相序，减少左转车流对直行车辆的干扰',
-        '建议启用车辆检测器，根据实时到达流量动态调整绿灯',
-        '精细化划分放行周期，匹配早晚高峰潮汐特性'
-      ];
-
-      this.signalAdviceList = data
-          .filter(item => this.fixSat(item.maxSaturation) > 0.4)
-          .sort((a, b) => this.fixSat(b.maxSaturation) - this.fixSat(a.maxSaturation))
-          .map((item, index) => {
-            const sat = this.fixSat(item.maxSaturation);
-            const idxStrat = this.getHashIndex(item.roadName, strategies.length);
-
-            let stratAction = strategies[idxStrat].name;
-            let stratDetail = details[idxStrat];
-            let tagType = strategies[idxStrat].type;
-
-            if (index === 0) {
-              stratAction = '延长绿灯';
-              tagType = 'success';
-              stratDetail = '现状：绿灯时长 30 秒，高峰时段排队车辆超 20 辆。建议：需延长绿灯至 45 秒。';
-            }
-
-            return {
-              roadName: item.roadName,
-              saturation: sat,
-              tagType: tagType,
-              strategyAction: stratAction,
-              strategyDetail: stratDetail,
-              impact: strategies[idxStrat].impact
-            };
-          });
-    },
-
-    processConstructionData(data) {
-      const problems = [
-        '路侧开口过多，进出地块车辆严重干扰主流',
-        '上下游车道数不匹配，形成局部交通瓶颈',
-        '交叉口几何设计局限，大型车辆转弯困难'
-      ];
-      const solutions = [
-        '封闭部分路侧开口，设置辅路集散交通',
-        '设置潮汐车道，利用对向闲置车道资源',
-        '实施路口渠化拓宽，增加进口车道数量'
-      ];
-
-      this.constructionList = data
-          .filter(item => this.fixSat(item.maxSaturation) > 0.6)
-          .sort((a, b) => this.fixSat(b.maxSaturation) - this.fixSat(a.maxSaturation))
-          .map((item, index) => {
-            const idx = this.getHashIndex(item.roadName, problems.length);
-
-            let diagnose = problems[idx];
-            let advice = solutions[idx];
-
-            if (index === 0) {
-              diagnose = `${item.roadName || '中山路'}车道数 4 条，高峰流量超饱和，负荷率 ${(this.fixSat(item.maxSaturation)*100).toFixed(0)}%`;
-              advice = `为路网改造提供依据：建议该路段增加 1 条车道`;
-            } else if (index === 1) {
-              diagnose = `分析区域流量分布：该区域流量年均预测增长 15%，现有路网压力过大`;
-              advice = `预测未来交通需求：规划新增该区域连接主干道的支路`;
-            } else if (index === 2) {
-              diagnose = `统计交通设备覆盖效果：某区域卡口设备覆盖率仅 80%，未覆盖区域流量数据严重缺失`;
-              advice = `数据采集优化：建议立即补充监控卡口设备安装`;
-            }
-
-            return {
-              roadName: item.roadName,
-              saturation: this.fixSat(item.maxSaturation),
-              diagnose: diagnose,
-              advice: advice,
-              cost: ['1200万', '800万', '150万', '300万'][idx % 4],
-              duration: ['6个月', '12个月', '2个月', '3个月'][idx % 4]
-            }
-          });
     },
 
     getSaturationColor(val) {
@@ -540,4 +433,27 @@ export default {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { border-radius: 3px; background: #c0c4cc; }
 ::-webkit-scrollbar-track { border-radius: 3px; background: #f5f7fa; }
+
+.impact-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.impact-up {
+  background: #fdf6ec;
+  color: #E6A23C;
+  border: 1px solid #faecd8;
+}
+.impact-down {
+  background: #f0f9eb;
+  color: #67C23A;
+  border: 1px solid #e1f3d8;
+}
+
+::v-deep .el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.7);
+}
 </style>
