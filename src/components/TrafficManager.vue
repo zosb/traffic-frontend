@@ -256,7 +256,6 @@ export default {
 .mb-20 { margin-bottom: 20px; }
 ::v-deep .el-table--mini th, ::v-deep .el-table--mini td { padding: 3px 0; }
 
-/* 响应式对齐布局核心样式 */
 .flex-row {
   display: flex;
   align-items: stretch;
@@ -291,12 +290,11 @@ export default {
   height: 100%;
 }
 
-/* ⭐ AI 控制台新版上下分离架构 */
 .ai-report-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 0; /* 强迫容器收紧，内部接管滚动 */
+  height: 0;
 }
 
 .ai-layout-wrapper {
@@ -305,21 +303,18 @@ export default {
   height: 100%;
 }
 
-/* 上半部分：滚动文字区 */
 .ai-scroll-area {
   flex: 1;
   overflow-y: auto;
   padding-right: 8px;
 }
 
-/* 定制优美的滚动条 */
 .ai-scroll-area::-webkit-scrollbar { width: 5px; }
 .ai-scroll-area::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 3px; }
 .ai-scroll-area::-webkit-scrollbar-track { background: transparent; }
 
-/* 下半部分：固定控制区 */
 .ai-fixed-bottom {
-  flex-shrink: 0; /* 禁止被压缩 */
+  flex-shrink: 0;
   background: #fff;
   padding-top: 10px;
 }

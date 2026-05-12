@@ -8,6 +8,18 @@
             <i class="el-icon-monitor" style="color: #409EFF; margin-right: 8px;"></i>
             数据仓库质量管控台
           </div>
+          <div class="controls">
+            <span style="font-size: 14px; color: #606266; margin-right: 10px;">监控基准日期：</span>
+            <el-date-picker
+                v-model="currDate"
+                type="date"
+                value-format="yyyy-MM-dd"
+                size="small"
+                placeholder="选择日期"
+                :clearable="false"
+                @change="refreshAllData">
+            </el-date-picker>
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -42,7 +54,7 @@
       <el-col :span="6">
         <div class="kpi-card bg-gradient-orange">
           <div class="card-title">有效清洗记录数</div>
-          <div class="card-value">{{ recordMetric.value }} <span style="font-size: 14px">万条</span></div>
+          <div class="card-value">{{ Number(recordMetric.value).toLocaleString() }} <span style="font-size: 14px">条</span></div>
           <div class="card-footer">
             <i class="el-icon-data-line"></i> 改善处理效果，环比昨日 {{ recordMetric.trend }}
           </div>
@@ -82,7 +94,7 @@
           </div>
 
           <div style="height: 320px; overflow-y: auto;">
-            <el-table :data="faultyDevices" stripe style="width: 100%">
+            <el-table :data="faultyDevices.slice(0, 50)" stripe style="width: 100%">
               <el-table-column prop="roadName" label="部署路段" width="120" show-overflow-tooltip></el-table-column>
               <el-table-column prop="captureCount" label="日采集量" width="100" align="center">
                 <template slot-scope="scope">
@@ -90,8 +102,16 @@
                 </template>
               </el-table-column>
               <el-table-column label="诊断建议">
-                <template>
-                  <el-tag type="info" size="mini"><i class="el-icon-switch-button"></i> 设备离线</el-tag>
+                <template slot-scope="scope">
+                  <el-tag v-if="scope.row.captureCount <= 3" type="danger" size="mini" effect="dark">
+                    <i class="el-icon-circle-close"></i> 核心板离线
+                  </el-tag>
+                  <el-tag v-else-if="scope.row.captureCount <= 12" type="warning" size="mini">
+                    <i class="el-icon-warning"></i> 供电口重启
+                  </el-tag>
+                  <el-tag v-else type="primary" size="mini" plain>
+                    <i class="el-icon-connection"></i> 弱网频丢包
+                  </el-tag>
                 </template>
               </el-table-column>
             </el-table>
@@ -112,15 +132,6 @@
           <div slot="header" class="card-header">
             <span>📉 城市流量时段特征挖掘</span>
             <div style="float: right;">
-              <el-date-picker
-                  v-model="currDate"
-                  type="date"
-                  value-format="yyyy-MM-dd"
-                  size="mini"
-                  placeholder="加载中..."
-                  style="width: 140px; margin-right: 10px;"
-                  @change="refreshData">
-              </el-date-picker>
               <el-select v-model="selectedRoad" size="mini" style="width: 120px;" @change="loadTrend" filterable>
                 <el-option v-for="road in mainRoads" :key="road" :label="road" :value="road"></el-option>
               </el-select>
@@ -160,7 +171,7 @@
                 </div>
               </div>
 
-              <el-divider><i class="el-icon-cpu"></i> Hive 智能归因详情</el-divider>
+              <el-divider><i class="el-icon-cpu"></i> 智能归因详情 </el-divider>
               <div v-if="analysisText" v-html="analysisText" class="ai-content"></div>
               <div v-else class="ai-content" style="color:#909399; text-align:center;">暂无底层文本归因。</div>
             </div>
@@ -223,42 +234,43 @@ export default {
       this.$el.querySelector('.el-table').scrollIntoView({ behavior: 'smooth' });
     },
 
-    refreshData() {
-      this.loadTrend();
+    refreshAllData() {
+      this.loadQualityReport();
     },
 
     loadQualityReport() {
-      axios.get('http://localhost:8080/api/analysis/quality_report')
+      let apiUrl = 'http://localhost:8080/api/analysis/quality_report';
+      if (this.currDate) {
+        apiUrl += '?date=' + this.currDate;
+      }
+
+      axios.get(apiUrl)
           .then(res => {
             const data = res.data;
-            if (data.date) {
+            if (data.date && !this.currDate) {
               this.currDate = data.date;
-              this.loadTrend();
             }
 
-            // ⭐ 完全对接真实后端数据，拒绝前端伪造假数据
-            // 1. ODS 缺失率
             this.odsMetric = {
               value: data.odsValue !== undefined ? data.odsValue : 0,
               status: (data.odsValue !== undefined && data.odsValue < 1) ? '正常' : '异常'
             };
 
-            // 2. GPS 匹配准确率
             this.gpsMetric = {
               value: data.gpsValue !== undefined ? data.gpsValue : 0,
               status: (data.gpsValue !== undefined && data.gpsValue > 95) ? '正常' : '需优化'
             };
 
-            // 3. 异常采集设备 (基于真实返回的数组长度进行统计计算)
             this.faultyDevices = data.faultyDevices || [];
 
-            // 4. 有效清洗记录数 (要求后端返回 recordCount 与 recordTrend 字段)
             this.recordMetric = {
               value: data.recordCount !== undefined ? data.recordCount : 0,
               trend: data.recordTrend || '+0%'
             };
 
             this.initQualityTrendChart(data.trend);
+
+            this.loadTrend();
           })
           .catch(err => {
             console.error("数据质量获取失败: ", err);
@@ -289,7 +301,14 @@ export default {
           {
             name: 'ODS缺失率(%)', type: 'line', smooth: true, data: odsData,
             itemStyle: { color: '#F56C6C' },
-            markLine: { data: [{ yAxis: 1, name: '阈值' }] }
+            markLine: {
+              data: [{ yAxis: 1, name: '阈值' }],
+              label: {
+                position: 'insideStartTop',
+                formatter: '{b}: {c}%',
+                color: '#F56C6C'
+              }
+            }
           },
           {
             name: 'GPS准确率(%)', type: 'line', yAxisIndex: 1, smooth: true, data: gpsData,
@@ -405,7 +424,7 @@ export default {
 
         if(this.analysisText) {
           let pureText = this.analysisText.replace(/<[^>]*>?/gm, '');
-          reportContent += `[4. 附：Hive 关联归因详情]\n${pureText}\n`;
+          reportContent += `[4. 附：智能归因详情]\n${pureText}\n`;
         }
         reportContent += `====================================================\n`;
         reportContent += `由 数据仓库质量管控与特征挖掘平台 自动生成`;
@@ -433,6 +452,7 @@ export default {
 
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05); }
 .dashboard-header .title { font-size: 18px; font-weight: bold; color: #303133; }
+.dashboard-header .controls { display: flex; align-items: center; }
 
 .kpi-card {
   border-radius: 8px;
@@ -469,7 +489,6 @@ export default {
 .border-bottom-red { border-bottom: 2px solid #F56C6C; padding-bottom: 10px; margin-bottom: -10px; }
 .border-bottom-orange { border-bottom: 2px solid #E6A23C; padding-bottom: 10px; margin-bottom: -10px; }
 
-/* 报告容器专属样式 */
 .ai-report-container {
   height: auto;
   flex: 1;
