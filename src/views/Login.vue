@@ -50,7 +50,7 @@
           </el-tooltip>
 
           <el-form-item prop="role">
-            <el-select v-model="loginForm.role" placeholder="请选择系统登录身份" size="large" style="width: 100%">
+            <el-select v-model="loginForm.role" placeholder="请选择系统登录身份" size="large" style="width: 100%" @change="saveRolePreference">
               <template slot="prefix">
                 <i class="el-icon-s-custom" style="margin-left: 5px; color: #c0c4cc;"></i>
               </template>
@@ -109,11 +109,11 @@ export default {
       capsTooltip: false,
       actualCaptcha: '',
       loginForm: {
-        username: '', // 初始状态强制为空
-        password: '', // 初始状态强制为空
+        username: '',
+        password: '',
         role: 'manager',
         verifyCode: '',
-        rememberMe: false // 初始状态强制不勾选
+        rememberMe: false
       },
       rules: {
         username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
@@ -124,10 +124,24 @@ export default {
     };
   },
   mounted() {
+    this.loginForm.username = '';
+    this.loginForm.password = '';
+    this.loginForm.verifyCode = '';
+    this.loginForm.rememberMe = false;
+
+    const preferredRole = localStorage.getItem('preferred_login_role') || localStorage.getItem('userRole');
+    if (preferredRole) {
+      this.loginForm.role = preferredRole;
+    }
+
     this.drawCaptcha();
     this.loadRememberedAccount();
   },
   methods: {
+    saveRolePreference(val) {
+      localStorage.setItem('preferred_login_role', val);
+    },
+
     checkCapslock(e) {
       const { key } = e;
       this.capsTooltip = key && key.length === 1 && key >= 'A' && key <= 'Z';
@@ -140,7 +154,7 @@ export default {
           const info = JSON.parse(savedInfo);
           this.loginForm.username = info.username;
           this.loginForm.password = info.password;
-          this.loginForm.role = info.role || 'manager';
+          this.loginForm.role = info.role || this.loginForm.role;
           this.loginForm.rememberMe = true;
         } catch (e) {
           localStorage.removeItem('traffic_login_info');
@@ -155,7 +169,7 @@ export default {
       const width = canvas.width;
       const height = canvas.height;
 
-      const chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+      const chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz1234567890';
       let code = '';
       for (let i = 0; i < 4; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -223,6 +237,7 @@ export default {
         this.loading = true;
         setTimeout(() => {
           if (this.loginForm.username === 'admin' && this.loginForm.password === '123456') {
+
             if (this.loginForm.rememberMe) {
               localStorage.setItem('traffic_login_info', JSON.stringify({
                 username: this.loginForm.username,
@@ -234,6 +249,7 @@ export default {
             }
 
             localStorage.setItem('userRole', this.loginForm.role);
+            localStorage.setItem('preferred_login_role', this.loginForm.role);
             localStorage.setItem('username', this.loginForm.username);
 
             const roleNames = {
