@@ -101,6 +101,7 @@
 </template>
 
 <script>
+import axios from 'axios';
 export default {
   name: 'Login',
   data() {
@@ -235,37 +236,42 @@ export default {
         }
 
         this.loading = true;
-        setTimeout(() => {
-          if (this.loginForm.username === 'admin' && this.loginForm.password === '123456') {
+
+        axios.post('http://localhost:8080/api/login', {
+          username: this.loginForm.username,
+          password: this.loginForm.password,
+          role: this.loginForm.role
+        }).then(res => {
+          if (res.data.success) {
+            const realRole = res.data.role;
+            const realName = res.data.name;
 
             if (this.loginForm.rememberMe) {
               localStorage.setItem('traffic_login_info', JSON.stringify({
                 username: this.loginForm.username,
                 password: this.loginForm.password,
-                role: this.loginForm.role
+                role: realRole
               }));
             } else {
               localStorage.removeItem('traffic_login_info');
             }
 
-            localStorage.setItem('userRole', this.loginForm.role);
-            localStorage.setItem('preferred_login_role', this.loginForm.role);
+            localStorage.setItem('userRole', realRole);
+            localStorage.setItem('preferred_login_role', realRole);
             localStorage.setItem('username', this.loginForm.username);
 
-            const roleNames = {
-              'manager': '交通管理人员',
-              'planner': '规划设计师',
-              'analyst': '数据分析师'
-            };
-            this.$message.success(`安全认证通过！欢迎，${roleNames[this.loginForm.role]}`);
+            this.$message.success(`安全认证通过！欢迎您，${realName}`);
             this.$router.push('/dashboard');
           } else {
-            this.$message.error('账号或密码错误');
+            this.$message.error(res.data.msg);
             this.loginForm.verifyCode = '';
             this.drawCaptcha();
             this.loading = false;
           }
-        }, 1000);
+        }).catch(err => {
+          this.$message.error('网络请求失败，请检查后端服务是否启动');
+          this.loading = false;
+        });
       });
     }
   }

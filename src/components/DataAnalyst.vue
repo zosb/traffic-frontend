@@ -130,7 +130,7 @@
       <el-col :span="14" style="display: flex; flex-direction: column;">
         <el-card shadow="hover" class="custom-card" style="flex: 1;">
           <div slot="header" class="card-header">
-            <span>📉 城市流量时段特征挖掘</span>
+            <span>📉 城市流量时段特征挖掘 </span>
             <div style="float: right;">
               <el-select v-model="selectedRoad" size="mini" style="width: 120px;" @change="loadTrend" filterable>
                 <el-option v-for="road in mainRoads" :key="road" :label="road" :value="road"></el-option>
@@ -380,10 +380,28 @@ export default {
         return;
       }
       this.isNotifyingOps = true;
-      setTimeout(() => {
-        this.isNotifyingOps = false;
-        this.$message.success(`已成功生成 ${this.faultyDevices.length} 张维修工单，并派发至运维部门！`);
-      }, 1000);
+
+      const targetDevice = this.faultyDevices[0];
+      let faultTypeStr = '弱网频丢包';
+      if (targetDevice.captureCount <= 3) faultTypeStr = '核心板离线';
+      else if (targetDevice.captureCount <= 12) faultTypeStr = '供电口重启';
+
+      const orderPayload = {
+        deviceId: targetDevice.deviceId || targetDevice.roadName,
+        faultType: faultTypeStr
+      };
+
+      axios.post('http://localhost:8080/api/create_work_order', orderPayload)
+          .then(res => {
+            this.isNotifyingOps = false;
+            if (res.data.success) {
+              this.$message.success(`已成功为设备【${orderPayload.deviceId}】生成维修工单，并派发至运维部门！`);
+            }
+          })
+          .catch(err => {
+            this.isNotifyingOps = false;
+            this.$message.error("派单失败，无法连接到后台工单系统。");
+          });
     },
 
     exportReport() {
